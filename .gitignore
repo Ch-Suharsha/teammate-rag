@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+# Large dumps — tracked folder, not gigabyte CSV blobs
+data/*.csv
+data/*.CSV
+.qdrant/
+.postgres/
+.DS_Store

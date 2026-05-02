@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atlas · Help Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    <script>
+      (function () {
+        try {
+          if (
+            localStorage.getItem("atlas_landing_v1") ||
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ) {
+            document.documentElement.classList.add("landing-seen", "intro-complete");
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="app-boot customer-facing">
+    <div class="intro-overlay" id="intro-overlay" role="dialog" aria-modal="true" aria-labelledby="intro-title-h1">
+      <div class="intro-bg" aria-hidden="true"></div>
+      <div class="intro-content">
+        <div class="intro-logo-wrap">
+          <div class="intro-logo" aria-hidden="true"></div>
+        </div>
+        <p class="intro-kicker animate-in" style="--d: 0ms">Welcome</p>
+        <h1 id="intro-title-h1" class="intro-title animate-in" style="--d: 80ms">
+          <span class="intro-line">We&apos;re glad you&apos;re here.</span>
+          <span class="intro-line dim">How can we help?</span>
+        </h1>
+        <p class="intro-lede animate-in" style="--d: 220ms">
+          Ask about an order, a return, or a product—we&apos;ll walk you through the next steps.
+        </p>
+        <div class="intro-actions animate-in" style="--d: 380ms">
+          <button type="button" class="btn btn-intro" id="intro-enter">Continue</button>
+          <span class="intro-hint mono">Press Enter</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <span>Atlas · Help Center</span>
+      </div>
+      <div class="nav-meta" id="nav-status">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">connecting…</span>
+      </div>
+    </nav>
+
+    <div class="shell shell--customer">
+      <div class="hero-compact hero-compact--customer">
+        <h1 class="hero-customer-headline">How can we help you today?</h1>
+        <p class="hero-lede hero-lede--customer">
+          Message our team anytime. Typical replies depend on queue length—please include your order number if you have one.
+        </p>
+      </div>
+
+      <div class="layout layout--customer">
+        <aside class="sidebar sidebar--customer">
+          <div class="side-row">
+            <div class="side-label side-label--soft">Your conversations</div>
+            <button type="button" class="btn-icon" id="new-session" title="New conversation" aria-label="New conversation">＋</button>
+          </div>
+          <ul class="session-list" id="session-list"></ul>
+
+          <div class="side-label side-label--soft" style="margin-top: 24px">Account</div>
+          <p class="side-help-customer">
+            Helps us locate your orders. Use the email on your Atlas account when possible.
+          </p>
+          <label class="ui-label ui-label--soft" for="customer-id">Customer ID</label>
+          <input id="customer-id" class="ui-input" type="text" placeholder="1" autocomplete="off" />
+          <label class="ui-label ui-label--soft" for="customer-email">Email</label>
+          <input id="customer-email" class="ui-input" type="email" placeholder="you@example.com" autocomplete="off" />
+        </aside>
+
+        <main class="main-panel">
+          <div class="panel-head panel-head--customer">
+            <div class="panel-head__text">
+              <h2>Messages</h2>
+            </div>
+          </div>
+
+          <section class="thread" id="thread" aria-live="polite">
+            <div class="welcome" id="empty-state">
+              <h3 class="welcome__title">What do you need help with?</h3>
+              <p class="welcome__sub">
+                Choose a quick topic or describe your situation below.
+              </p>
+              <div class="chips">
+                <button type="button" class="chip" data-text="Where is my order ORD-88210?">
+                  Track order ORD‑88210
+                </button>
+                <button type="button" class="chip" data-text="I received a damaged item and need a refund.">
+                  Damaged item / refund
+                </button>
+                <button type="button" class="chip" data-text="Can you recommend a carry-on suitcase under $200?">
+                  Product suggestions
+                </button>
+                <button type="button" class="chip" data-text="I&#39;d like to speak with someone about my order.">
+                  Talk to someone
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <form class="composer" id="composer" autocomplete="off">
+            <div class="composer-card card">
+              <label class="ui-label ui-label--soft" for="input">Your message</label>
+              <textarea
+                id="input"
+                class="composer-ta"
+                rows="2"
+                placeholder="Type your question…"
+                required
+              ></textarea>
+              <div class="composer-actions">
+                <span class="hint hint--customer">Enter to send · Shift+Enter for a new line</span>
+                <button type="submit" class="btn btn-primary" id="send-btn">
+                  Send
+                  <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <path
+                      d="M3 10h12M11 6l4 4-4 4"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      fill="none"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+
+    <template id="tpl-message-user">
+      <article class="msg msg-user">
+        <div class="msg-user__bubble msg-user__bubble--customer"> </div>
+      </article>
+    </template>
+
+    <template id="tpl-message-bot">
+      <article class="msg msg-bot">
+        <div class="msg-bot__accent" aria-hidden="true"></div>
+        <div class="msg-bot__stack">
+          <div class="msg-bot__bubble msg-bot__bubble--customer">
+            <div class="msg-bot__assistant-label visually-hidden">Support</div>
+            <div class="msg-bot__copy"></div>
+          </div>
+          <div class="msg-meta" hidden></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

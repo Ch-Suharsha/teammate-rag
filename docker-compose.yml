@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-support}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-support}
+      POSTGRES_DB: ${POSTGRES_DB:-support}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-support}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+
+  # Easiest email for local dev — no SES/Resend. Start with:
+  #   docker compose --profile dev-mail up -d
+  # Then set in .env: SMTP_HOST=mailhog SMTP_PORT=1025 SMTP_USE_TLS=false SMTP_USERNAME="" SMTP_PASSWORD="" SMTP_FROM=anyone@localhost
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    profiles: ["dev-mail"]
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+      - ./web:/app/web
+      # Catalog CSVs live in ./data (see steps.md). Mounted read-only at /data for ingest + runtime tooling.
+      - ./data:/data:ro
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  hf_cache:
