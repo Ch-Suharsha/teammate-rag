@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Iterable
 
 SENTIMENT_RULES: dict[str, list[str]] = {
@@ -12,12 +13,13 @@ SENTIMENT_RULES: dict[str, list[str]] = {
         "annoyed", "so annoyed", "very annoyed", "pissed", "livid",
         "unbelievable", "absurd", "disgrace", "joke", "embarrassing",
     ],
+    # Only genuine expressions of dissatisfaction — not topic/request words like
+    # "refund", "return", "cancel" which appear in neutral policy questions.
     "negative": [
         "problem", "issue", "wrong", "broken", "missing", "late", "delayed",
-        "damaged", "error", "failed", "not working", "doesn't work", "can't",
-        "unable", "refund", "return", "cancel", "complaint", "bad", "poor",
-        "unhappy", "waiting", "still haven't", "never received", "disappointed",
-        "upset", "not happy", "not satisfied", "not working", "frustrated",
+        "damaged", "error", "failed", "not working", "doesn't work",
+        "unable", "bad", "poor", "unhappy", "still haven't", "never received",
+        "disappointed", "upset", "not happy", "not satisfied",
     ],
     "positive": [
         "thank", "thanks", "great", "excellent", "amazing", "wonderful",
@@ -28,7 +30,10 @@ SENTIMENT_RULES: dict[str, list[str]] = {
 
 INTENT_RULES: dict[str, list[str]] = {
     "track_order": ["where is my order", "track", "tracking", "order status", "where's my", "shipped"],
-    "cancel_order": ["cancel", "cancellation"],
+    # Use phrases/boundaries to avoid "noise cancelling" → cancel_order
+    "cancel_order": ["cancel my order", "cancel the order", "cancel order", "i want to cancel",
+                     "cancellation", "cancel it", "stop my order", "don't want it anymore",
+                     "no longer want"],
     "return_item": ["return", "send back", "returning"],
     "refund_request": ["refund", "money back", "charge back", "reimburse"],
     "payment_issue": ["payment", "charged", "billing", "invoice", "credit card", "double charge"],
@@ -53,9 +58,22 @@ INTENT_RULES: dict[str, list[str]] = {
     "shipping_options": ["shipping", "how long", "delivery time", "express", "overnight", "free shipping"],
 }
 
+# Phrases that look like they contain a keyword but are product/feature descriptions.
+# Strip these from the text before sentiment/intent matching.
+_NEUTRAL_PRODUCT_PHRASES = re.compile(
+    r'\bnoise[- ]cancel(?:l?ing|l?ation|l?er)?\b'
+    r'|\bactive noise\b'
+    r'|\bnc headphones?\b',
+    re.IGNORECASE,
+)
+
+
+def _strip_product_phrases(text: str) -> str:
+    return _NEUTRAL_PRODUCT_PHRASES.sub('', text)
+
 
 def detect_sentiment(text: str) -> str:
-    t = text.lower()
+    t = _strip_product_phrases(text).lower()
     for label in ("frustrated", "negative", "positive"):
         if any(kw in t for kw in SENTIMENT_RULES[label]):
             return label
@@ -63,7 +81,7 @@ def detect_sentiment(text: str) -> str:
 
 
 def detect_intent(text: str) -> str:
-    t = text.lower()
+    t = _strip_product_phrases(text).lower()
     for intent, kws in INTENT_RULES.items():
         if any(kw in t for kw in kws):
             return intent
@@ -76,7 +94,9 @@ def cumulative_sentiment(history: Iterable[str]) -> str:
         counts[s] = counts.get(s, 0) + 1
     if counts["frustrated"] >= 1:
         return "frustrated"
-    if counts["negative"] >= 2:
+    # Require 3 negative turns (not 2) before treating as frustrated —
+    # prevents policy FAQ chains from triggering premature escalation.
+    if counts["negative"] >= 3:
         return "frustrated"
     if counts["negative"] >= 1:
         return "negative"
@@ -86,9 +106,11 @@ def cumulative_sentiment(history: Iterable[str]) -> str:
 
 
 def should_escalate(sentiment: str, cumulative: str, intent: str) -> bool:
-    if cumulative == "frustrated":
-        return True
+    # Only escalate on explicit frustration or escalation intent — not just "negative" sentiment,
+    # which fires on ordinary problem-reporting turns.
     if sentiment == "frustrated":
+        return True
+    if cumulative == "frustrated":
         return True
     if intent in {"complaint", "escalate_to_human"}:
         return True

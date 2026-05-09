@@ -65,18 +65,27 @@ def _needs_identification(message: str, history: list) -> bool:
     if _extract_order_from_history(history):
         return True
 
-    # Bot explicitly asked for email in its last message → this IS an identification response
-    if _bot_is_waiting_for_email(history):
-        return True
-
     msg_lower = message.lower()
+
+    # Policy/general questions should NEVER require ID, even if bot previously asked for email.
+    # A user pivoting from a personal query to "what's your return policy?" should get an answer.
+    _is_policy_question = any(kw in msg_lower for kw in (
+        'policy', 'policies', 'warranty', 'guarantee', 'how long', 'how do i',
+        'what is your', 'what are your', 'do you offer', 'do you have',
+        'what if', 'can i', 'is it possible',
+    ))
+
+    # Bot explicitly asked for email — treat the current message as an identification response
+    # UNLESS it's clearly a general/policy question (user changed topic).
+    if _bot_is_waiting_for_email(history) and not _is_policy_question:
+        return True
 
     # Explicit order ID in message → definitely needs ID
     if _ORDER_RE.search(message):
         return True
 
     # Policy / general info questions never need ID even if they contain personal keywords
-    if any(kw in msg_lower for kw in ('policy', 'policies', 'warranty', 'guarantee')):
+    if _is_policy_question:
         return False
 
     # Escalation intent never needs ID — route directly to human handoff
@@ -96,8 +105,10 @@ def _needs_identification(message: str, history: list) -> bool:
     # is framed personally (has "my", "I want/need/have"). A question like
     # "what is the return window?" or "noise cancelling earbuds" should NOT
     # trigger the ID gate even if the intent classifier fires on a substring.
+    # Use specific phrases — bare "i have" matches "do i have to" (false positive)
     _PERSONAL_INDICATORS = {'my ', 'i want', 'i need', "i'd like", 'i would like',
-                             'i have', "i've", 'i ordered', 'i bought', 'i purchased'}
+                             'i have my', 'i have an order', "i've", 'i ordered',
+                             'i bought', 'i purchased', 'i placed'}
     msg_is_personal = any(ind in msg_lower for ind in _PERSONAL_INDICATORS)
     if intent in {'track_order', 'cancel_order', 'return_item', 'refund_request',
                   'delivery_problem', 'wrong_item', 'missing_item', 'account_access',

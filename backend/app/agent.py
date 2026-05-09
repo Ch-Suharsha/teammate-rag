@@ -46,7 +46,13 @@ _PRODUCT_KEYWORDS = {
 _ACCOUNT_KEYWORDS = {'account', 'membership', 'tier', 'profile', 'my info', 'member since',
                      'how many orders', 'open orders', 'total orders', 'order history'}
 _REFUND_KEYWORDS = {'refund', 'money back', 'charge back', 'reimbburse', 'reimburse'}
-_CANCEL_KEYWORDS = {'cancel', 'stop', 'dont want', "don't want", 'undo', 'abort', 'no longer want'}
+_CANCEL_KEYWORDS = {
+    'cancel my order', 'cancel the order', 'cancel order', 'i want to cancel',
+    'cancellation', 'cancel it', 'stop my order', "don't want it anymore",
+    'no longer want', 'undo my order', 'abort',
+}
+# Phrases that CONTAIN "cancel" but are NOT order-cancellation requests
+_CANCEL_FALSE_POSITIVES = {'noise cancel', 'noise-cancel', 'active cancel'}
 
 
 def _fmt_order(result: dict) -> str:
@@ -93,7 +99,11 @@ def _route_tools(
 
     # Bug fix: refund takes priority over cancel when both keywords appear
     has_refund = any(k in msg_lower for k in _REFUND_KEYWORDS)
-    has_cancel = any(k in msg_lower for k in _CANCEL_KEYWORDS) and not has_refund
+    has_cancel = (
+        any(k in msg_lower for k in _CANCEL_KEYWORDS)
+        and not any(fp in msg_lower for fp in _CANCEL_FALSE_POSITIVES)
+        and not has_refund
+    )
 
     # Only pull order ID from history when the current message is actually order-related.
     # Use word boundaries to avoid "ship" matching "membership", etc.
@@ -435,7 +445,7 @@ def run_agent(
                 "You're very welcome! I'm glad I could help. "
                 "If you ever need anything else, don't hesitate to reach out. Have a great day!"
             ), invocations
-        if sentiment in {"frustrated", "negative"} or cumulative == "frustrated":
+        if sentiment == "frustrated" or cumulative == "frustrated":
             return (
                 "I'm really sorry you're having this experience — that's completely understandable. "
                 "I want to make sure you get the right help. Let me connect you with a member of our "
