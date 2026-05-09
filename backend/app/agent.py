@@ -186,7 +186,8 @@ def _route_tools(
     _ORDER_FOLLOWUP_RE = re.compile(
         r'\b(carrier|when|eta|arrival|transit|tracking|estimated|update|'
         r'late|early|delayed|status|same order|that order|expedite|delivery date|'
-        r'where|how long|still|yet|received|expect|location|it is|it\'s)\b',
+        r'where|how long|still|yet|received|expect|location|it is|it\'s|'
+        r'wrong with|broken|defective|missing item|not arrived)\b',
         re.IGNORECASE,
     )
     if (not any(inv.name == "lookup_order" for inv in invocations)
