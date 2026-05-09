@@ -80,6 +80,13 @@ def _needs_identification(message: str, history: list) -> bool:
     if _bot_is_waiting_for_email(history) and not _is_policy_question:
         return True
 
+    # Proactive credential submission: user sends their email without being prompted.
+    # This handles "My email is alice@demo.atlas" or just "alice@demo.atlas" as first message.
+    # Safe because: (a) policy questions are already excluded above, (b) if the email isn't
+    # in the DB the handler returns a "couldn't find account" message, not an error.
+    if _extract_email(message) and not _is_policy_question:
+        return True
+
     # Explicit order ID in message → definitely needs ID
     if _ORDER_RE.search(message):
         return True

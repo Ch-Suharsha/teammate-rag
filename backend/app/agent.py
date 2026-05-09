@@ -109,8 +109,9 @@ def _route_tools(
     # Use word boundaries to avoid "ship" matching "membership", etc.
     _ORDER_CONTEXT_RE = re.compile(
         r'\b(order|track|tracking|shipped|shipping|deliver|delivered|delivery|'
-        r'cancel|cancell?ation|refund|return|package|parcel|status|'
-        r'where is|where\'s|when will|when does|arrive|arrived|item)\b',
+        r'cancel|cancell?ation|refund|return|package|parcel|status|carrier|'
+        r'eta|transit|estimated|arrival|where is|where\'s|when will|when does|'
+        r'arrive|arrived|item|same order|that order|my order)\b',
         re.IGNORECASE,
     )
     if not order_match and history and _ORDER_CONTEXT_RE.search(message):
@@ -176,6 +177,31 @@ def _route_tools(
             f"Open Orders: {result.get('open_orders', 0)}\n"
             f"Total Orders: {result.get('total_orders', 0)}"
         )
+
+    # ── Order context carryforward ────────────────────────────────────────────
+    # If the customer is identified, no tools fired yet, but there is a recent
+    # order in history, re-run lookup_order so the LLM can answer follow-up
+    # questions (e.g. "Who is the carrier?", "Is it late?") without the user
+    # having to repeat the order number.
+    _ORDER_FOLLOWUP_RE = re.compile(
+        r'\b(carrier|when|eta|arrival|transit|tracking|estimated|update|'
+        r'late|early|delayed|status|same order|that order|expedite|delivery date|'
+        r'where|how long|still|yet|received|expect|location|it is|it\'s)\b',
+        re.IGNORECASE,
+    )
+    if (not any(inv.name == "lookup_order" for inv in invocations)
+            and ctx.customer_id
+            and history
+            and _ORDER_FOLLOWUP_RE.search(message)):
+        prior_id = _extract_order_id_from_history(history)
+        if prior_id:
+            result = tools.execute_tool("lookup_order", {"order_id": prior_id}, ctx)
+            invocations.append(ToolInvocation(
+                name="lookup_order",
+                arguments={"order_id": prior_id},
+                result=result,
+            ))
+            blocks.append(_fmt_order(result))
 
     context_block = "\n".join(blocks)
     return invocations, context_block
